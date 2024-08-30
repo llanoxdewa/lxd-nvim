@@ -89,7 +89,7 @@ P.S. You can delete this when you're done too. It's your config now! :)
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
-
+vim.o.hidden = true
 -- Set to true if you have a Nerd Font installed
 vim.g.have_nerd_font = false
 
@@ -160,6 +160,9 @@ vim.opt.scrolloff = 10
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<C-p>', '<cmd>NvimTreeToggle<CR>')
+vim.keymap.set('n', '<Tab>', '<cmd>tabn<CR>')
+vim.keymap.set('n', '<shift>q', '<cmd>tabClose<CR>')
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
@@ -190,6 +193,44 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+-- for replace
+local opts = {}
+vim.api.nvim_set_keymap('v', '<C-r>', '<CMD>SearchReplaceSingleBufferVisualSelection<CR>', opts)
+vim.api.nvim_set_keymap('v', '<C-s>', '<CMD>SearchReplaceWithinVisualSelection<CR>', opts)
+vim.api.nvim_set_keymap('v', '<C-b>', '<CMD>SearchReplaceWithinVisualSelectionCWord<CR>', opts)
+
+vim.api.nvim_set_keymap('n', '<leader>rs', '<CMD>SearchReplaceSingleBufferSelections<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>ro', '<CMD>SearchReplaceSingleBufferOpen<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rw', '<CMD>SearchReplaceSingleBufferCWord<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rW', '<CMD>SearchReplaceSingleBufferCWORD<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>re', '<CMD>SearchReplaceSingleBufferCExpr<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rf', '<CMD>SearchReplaceSingleBufferCFile<CR>', opts)
+
+vim.api.nvim_set_keymap('n', '<leader>rbs', '<CMD>SearchReplaceMultiBufferSelections<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rbo', '<CMD>SearchReplaceMultiBufferOpen<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rbw', '<CMD>SearchReplaceMultiBufferCWord<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rbW', '<CMD>SearchReplaceMultiBufferCWORD<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rbe', '<CMD>SearchReplaceMultiBufferCExpr<CR>', opts)
+vim.api.nvim_set_keymap('n', '<leader>rbf', '<CMD>SearchReplaceMultiBufferCFile<CR>', opts)
+
+-- show the effects of a search / replace in a live preview window
+vim.o.inccommand = 'split'
+
+-- Open compiler
+vim.api.nvim_set_keymap('n', '<F6>', '<cmd>CompilerOpen<cr>', { noremap = true, silent = true })
+
+-- Redo last selected option
+vim.api.nvim_set_keymap(
+  'n',
+  '<S-F6>',
+  '<cmd>CompilerStop<cr>' -- (Optional, to dispose all tasks before redo)
+    .. '<cmd>CompilerRedo<cr>',
+  { noremap = true, silent = true }
+)
+
+-- Toggle compiler results
+vim.api.nvim_set_keymap('n', '<S-F7>', '<cmd>CompilerToggleResults<cr>', { noremap = true, silent = true })
+
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -213,6 +254,9 @@ if not vim.loop.fs_stat(lazypath) then
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
+vim.api.nvim_set_keymap('n', '<M-s>', '<Plug>MarkdownPreviewStop', {})
+vim.api.nvim_set_keymap('n', '<M-p>', '<Plug>MarkdownPreviewToggle', {})
+
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -225,6 +269,187 @@ vim.opt.rtp:prepend(lazypath)
 --
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
+  -- begin costum
+
+  -- for markdown preview
+  {
+    'iamcco/markdown-preview.nvim',
+    cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
+    ft = { 'markdown' },
+    build = function()
+      vim.fn['mkdp#util#install']()
+    end,
+  },
+  -- c++ compiler
+  { -- This plugin
+    'Zeioth/compiler.nvim',
+    cmd = { 'CompilerOpen', 'CompilerToggleResults', 'CompilerRedo' },
+    dependencies = { 'stevearc/overseer.nvim', 'nvim-telescope/telescope.nvim' },
+    opts = {},
+  },
+  { -- The task runner we use
+    'stevearc/overseer.nvim',
+    commit = '6271cab7ccc4ca840faa93f54440ffae3a3918bd',
+    cmd = { 'CompilerOpen', 'CompilerToggleResults', 'CompilerRedo' },
+    opts = {
+      task_list = {
+        direction = 'bottom',
+        min_height = 25,
+        max_height = 25,
+        default_detail = 1,
+      },
+    },
+  },
+  {
+    's1n7ax/nvim-terminal',
+    config = function()
+      require('nvim-terminal').setup {
+        window = {
+          -- Do `:h :botright` for more information
+          -- NOTE: width or height may not be applied in some "pos"
+          position = 'botright',
+
+          -- Do `:h split` for more information
+          split = 'sp',
+
+          -- Width of the terminal
+          width = 50,
+
+          -- Height of the terminal
+          height = 15,
+        },
+
+        -- keymap to disable all the default keymaps
+        disable_default_keymaps = false,
+
+        -- keymap to toggle open and close terminal window
+        toggle_keymap = '<leader>;',
+
+        -- increase the window height by when you hit the keymap
+        window_height_change_amount = 2,
+
+        -- increase the window width by when you hit the keymap
+        window_width_change_amount = 2,
+
+        -- keymap to increase the window width
+        increase_width_keymap = '<leader><leader>+',
+
+        -- keymap to decrease the window width
+        decrease_width_keymap = '<leader><leader>-',
+
+        -- keymap to increase the window height
+        increase_height_keymap = '<leader>+',
+
+        -- keymap to decrease the window height
+        decrease_height_keymap = '<leader>-',
+
+        terminals = {
+          -- keymaps to open nth terminal
+          { keymap = '<leader>1' },
+          { keymap = '<leader>2' },
+          { keymap = '<leader>3' },
+          { keymap = '<leader>4' },
+          { keymap = '<leader>5' },
+        },
+      }
+    end,
+  },
+  {
+    'brenoprata10/nvim-highlight-colors',
+    config = function()
+      -- Ensure termguicolors is enabled if not already
+      vim.opt.termguicolors = true
+
+      require('nvim-highlight-colors').setup {
+        ---Render style
+        ---@usage 'background'|'foreground'|'virtual'
+        render = 'background',
+
+        ---Set virtual symbol (requires render to be set to 'virtual')
+        virtual_symbol = '■',
+
+        ---Set virtual symbol suffix (defaults to '')
+        virtual_symbol_prefix = '',
+
+        ---Set virtual symbol suffix (defaults to ' ')
+        virtual_symbol_suffix = ' ',
+
+        ---Set virtual symbol position()
+        ---@usage 'inline'|'eol'|'eow'
+        ---inline mimics VS Code style
+        ---eol stands for `end of column` - Recommended to set `virtual_symbol_suffix = ''` when used.
+        ---eow stands for `end of word` - Recommended to set `virtual_symbol_prefix = ' ' and virtual_symbol_suffix = ''` when used.
+        virtual_symbol_position = 'inline',
+
+        ---Highlight hex colors, e.g. '#FFFFFF'
+        enable_hex = true,
+
+        ---Highlight short hex colors e.g. '#fff'
+        enable_short_hex = true,
+
+        ---Highlight rgb colors, e.g. 'rgb(0 0 0)'
+        enable_rgb = true,
+
+        ---Highlight hsl colors, e.g. 'hsl(150deg 30% 40%)'
+        enable_hsl = true,
+
+        ---Highlight CSS variables, e.g. 'var(--testing-color)'
+        enable_var_usage = true,
+
+        ---Highlight named colors, e.g. 'green'
+        enable_named_colors = true,
+
+        ---Highlight tailwind colors, e.g. 'bg-blue-500'
+        enable_tailwind = true,
+      }
+    end,
+  },
+  {
+    'roobert/search-replace.nvim',
+    config = function()
+      require('search-replace').setup {
+        -- optionally override defaults
+        default_replace_single_buffer_options = 'gcI',
+        default_replace_multi_buffer_options = 'egcI',
+      }
+    end,
+  },
+
+  {
+    'smoka7/multicursors.nvim',
+    event = 'VeryLazy',
+    dependencies = {
+      'smoka7/hydra.nvim',
+    },
+    opts = {},
+    cmd = { 'MCstart', 'MCvisual', 'MCclear', 'MCpattern', 'MCvisualPattern', 'MCunderCursor' },
+    keys = {
+      {
+        mode = { 'v', 'n' },
+        '<Leader>m',
+        '<cmd>MCstart<cr>',
+        desc = 'Create a selection for selected text or word under the cursor',
+      },
+    },
+  },
+
+  -- dev icons
+
+  {
+    'nvim-tree/nvim-tree.lua',
+    config = function()
+      -- disable netrw at the very start of your init.lua
+      vim.g.loaded_netrw = 1
+      vim.g.loaded_netrwPlugin = 1
+
+      -- optionally enable 24-bit colour
+      vim.opt.termguicolors = true
+      require('nvim-tree').setup()
+
+      -- OR setup with some options
+    end,
+  },
+
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
@@ -238,7 +463,24 @@ require('lazy').setup({
   --    require('Comment').setup({})
 
   -- "gc" to comment visual regions/lines
-  { 'numToStr/Comment.nvim', opts = {} },
+
+  {
+    'JoosepAlviste/nvim-ts-context-commentstring',
+    config = function()
+      require('ts_context_commentstring').setup {
+        enable_autocmd = false,
+      }
+    end,
+  },
+
+  {
+    'numToStr/Comment.nvim',
+    config = function()
+      require('Comment').setup {
+        pre_hook = require('ts_context_commentstring.integrations.comment_nvim').create_pre_hook(),
+      }
+    end,
+  },
 
   -- Here is a more advanced example where we pass configuration
   -- options to `gitsigns.nvim`. This is equivalent to the following Lua:
@@ -319,7 +561,7 @@ require('lazy').setup({
       { 'nvim-telescope/telescope-ui-select.nvim' },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
-      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+      { 'nvim-tree/nvim-web-devicons', enabled = true },
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -353,6 +595,11 @@ require('lazy').setup({
         --   },
         -- },
         -- pickers = {}
+        defaults = {
+          file_ignore_patterns = {
+            'node_modules',
+          },
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -702,7 +949,7 @@ require('lazy').setup({
           -- Accept ([y]es) the completion.
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
-          ['<C-y>'] = cmp.mapping.confirm { select = true },
+          ['<enter>'] = cmp.mapping.confirm { select = true },
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
@@ -798,6 +1045,8 @@ require('lazy').setup({
       --  Check out: https://github.com/echasnovski/mini.nvim
     end,
   },
+  -- for  terminal
+
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
